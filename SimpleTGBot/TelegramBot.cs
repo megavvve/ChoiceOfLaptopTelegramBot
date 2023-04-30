@@ -18,22 +18,14 @@ public class TelegramBot
     public async Task Run()
     {
 
-
-        // List<Laptop> laptopList = LaptopList.GetLaptopList(@"./input-files/laptops_train.csv");
-
         var botClient = new TelegramBotClient(BotToken);// запускаю сервер
 
-        using CancellationTokenSource cts = new CancellationTokenSource();//токен для като
-
-        // Разрешённые события, которые будет получать и обрабатывать наш бот.
-        // Будем получать только сообщения. При желании можно поработать с другими событиями.
+        using CancellationTokenSource cts = new CancellationTokenSource();
         ReceiverOptions receiverOptions = new ReceiverOptions()
         {
             AllowedUpdates = new[] { UpdateType.Message,
             UpdateType.CallbackQuery}
-        };//можем принимать тольео текст пока что
-
-        // Привязываем все обработчики и начинаем принимать сообщения для бота
+        };
         botClient.StartReceiving(
             updateHandler: OnMessageReceived,//бот обравбатывевт обновления
             pollingErrorHandler: OnErrorOccured,// если ошибка
@@ -42,8 +34,6 @@ public class TelegramBot
         );
 
 
-
-        // Проверяем что токен верный и получаем информацию о боте
         var me = await botClient.GetMeAsync(cancellationToken: cts.Token);
         Console.WriteLine($"Бот @{me.Username} запущен.\nДля остановки нажмите клавишу Esc...");
 
@@ -71,7 +61,7 @@ public class TelegramBot
             return;
         }
 
-        var chatId = message.Chat.Id;//уникальная херня какая то
+        var chatId = message.Chat.Id;
         List<Laptop> laptopList = LaptopList.GetLaptopList(@"./input-files/laptops_train.csv");
         Console.WriteLine($"Получено сообщение в чате {chatId}: '{messageText}'");
 
@@ -126,26 +116,7 @@ public class TelegramBot
                 }
                 else if (message.Text == "ЛУЧШИЙ НОУТБУК ДЛЯ ПРОГРАММИРОВАНИЯ!!!!")
                 {
-                    /* await botClient.SendTextMessageAsync(
-    chatId: chatId,
-    text: "ИМЕННО ПО ЭТОЙ ССЫЛКЕ НАХОДИТСЯ ЛУЧШИЙ НОУТБУК КОТОРЫЙ МОЖЕТ БЫТЬ",
-    parseMode: ParseMode.MarkdownV2,
-    disableNotification: true,
-    
-    replyMarkup: new InlineKeyboardMarkup(
-        InlineKeyboardButton.WithUrl(
-            text: "Тык сюда",
-            url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ")),
-    cancellationToken: cancellationToken);*/
-                    Console.WriteLine(1);
-                    /*await using var stream = System.IO.File.OpenRead("./input-files/best_laptop.mp4");
-
-                    await botClient.SendVideoNoteAsync(
-                        chatId: chatId,
-                        videoNote: stream,
-                        duration: 47,
-                        length: 360, // value of width/height
-                        cancellationToken: cancellationToken);*/
+                    
 
                     await botClient.SendPhotoAsync(
     chatId: chatId,
