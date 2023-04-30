@@ -1,64 +1,62 @@
 ﻿using System.Reflection.Metadata.Ecma335;
 
 namespace SimpleTGBot;
+using Telegram.Bot.Types.ReplyMarkups;
 using Telegram.Bot;
 using Telegram.Bot.Exceptions;
 using Telegram.Bot.Polling;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
+using System.Security.Cryptography.X509Certificates;
+using System.Linq;
+using System.Text.RegularExpressions;
 
 public class TelegramBot
 {
-    // Токен TG-бота. Можно получить у @BotFather
-    private const string BotToken = "ВАШ_ТОКЕН_ИДЕНТИФИКАЦИИ_БОТА";
-    
-    /// <summary>
-    /// Инициализирует и обеспечивает работу бота до нажатия клавиши Esc
-    /// </summary>
+    Stack<string> stack = new Stack<string>();
+    private const string BotToken = "5974502960:AAG3QpvQS8n2fBC8ejyH5nwI_KTFfSXyXGo";
     public async Task Run()
     {
-        // Если вам нужно хранить какие-то данные во время работы бота (массив информации, логи бота,
-        // историю сообщений для каждого пользователя), то это всё надо инициализировать в этом методе.
-        // TODO: Инициализация необходимых полей
-        
-        // Инициализируем наш клиент, передавая ему токен.
-        var botClient = new TelegramBotClient(BotToken);
-        
-        // Служебные вещи для организации правильной работы с потоками
-        using CancellationTokenSource cts = new CancellationTokenSource();
-        
+
+
+        // List<Laptop> laptopList = LaptopList.GetLaptopList(@"./input-files/laptops_train.csv");
+
+        var botClient = new TelegramBotClient(BotToken);// запускаю сервер
+
+        using CancellationTokenSource cts = new CancellationTokenSource();//токен для като
+
         // Разрешённые события, которые будет получать и обрабатывать наш бот.
         // Будем получать только сообщения. При желании можно поработать с другими событиями.
         ReceiverOptions receiverOptions = new ReceiverOptions()
         {
-            AllowedUpdates = new [] { UpdateType.Message }
-        };
+            AllowedUpdates = new[] { UpdateType.Message,
+            UpdateType.CallbackQuery}
+        };//можем принимать тольео текст пока что
 
         // Привязываем все обработчики и начинаем принимать сообщения для бота
         botClient.StartReceiving(
-            updateHandler: OnMessageReceived,
-            pollingErrorHandler: OnErrorOccured,
-            receiverOptions: receiverOptions,
-            cancellationToken: cts.Token
+            updateHandler: OnMessageReceived,//бот обравбатывевт обновления
+            pollingErrorHandler: OnErrorOccured,// если ошибка
+            receiverOptions: receiverOptions, //настройки
+            cancellationToken: cts.Token//токен
         );
+
+
 
         // Проверяем что токен верный и получаем информацию о боте
         var me = await botClient.GetMeAsync(cancellationToken: cts.Token);
         Console.WriteLine($"Бот @{me.Username} запущен.\nДля остановки нажмите клавишу Esc...");
-        
+
         // Ждём, пока будет нажата клавиша Esc, тогда завершаем работу бота
-        while (Console.ReadKey().Key != ConsoleKey.Escape){}
+        while (Console.ReadKey().Key != ConsoleKey.Escape) { }
 
         // Отправляем запрос для остановки работы клиента.
         cts.Cancel();
     }
-    
-    /// <summary>
-    /// Обработчик события получения сообщения.
-    /// </summary>
-    /// <param name="botClient">Клиент, который получил сообщение</param>
-    /// <param name="update">Событие, произошедшее в чате. Новое сообщение, голос в опросе, исключение из чата и т. д.</param>
-    /// <param name="cancellationToken">Служебный токен для работы с многопоточностью</param>
+
+
+
+
     async Task OnMessageReceived(ITelegramBotClient botClient, Update update, CancellationToken cancellationToken)
     {
         // Работаем только с сообщениями. Остальные события игнорируем
@@ -67,38 +65,235 @@ public class TelegramBot
         {
             return;
         }
-        // Будем обрабатывать только текстовые сообщения.
-        // При желании можно обрабатывать стикеры, фото, голосовые и т. д.
-        //
-        // Обратите внимание на использованную конструкцию. Она эквивалентна проверке на null, приведённой выше.
-        // Подробнее об этом синтаксисе: https://medium.com/@mattkenefick/snippets-in-c-more-ways-to-check-for-null-4eb735594c09
+
         if (message.Text is not { } messageText)
         {
             return;
         }
 
-        // Получаем ID чата, в которое пришло сообщение. Полезно, чтобы отличать пользователей друг от друга.
-        var chatId = message.Chat.Id;
-        
-        // Печатаем на консоль факт получения сообщения
+        var chatId = message.Chat.Id;//уникальная херня какая то
+        List<Laptop> laptopList = LaptopList.GetLaptopList(@"./input-files/laptops_train.csv");
         Console.WriteLine($"Получено сообщение в чате {chatId}: '{messageText}'");
 
-        // TODO: Обработка пришедших сообщений
-        
-        // Отправляем обратно то же сообщение, что и получили
-        Message sentMessage = await botClient.SendTextMessageAsync(
-            chatId: chatId,
-            text: "Ты написал:\n" + messageText,
+
+
+
+        if (message.Text == "/start")
+        {
+            stack = new Stack<string>();
+
+
+            await botClient.SendTextMessageAsync(chatId, "Выберите пункт меню:",
+            replyMarkup: ForTelegramBot.keyboardMarkup(message.Text),
             cancellationToken: cancellationToken);
+            stack.Push(message.Text.ToLower());
+        }
+
+        else if (stack.Count > 0)
+        {
+            if (message.Text.ToLower() == "назад")
+            {
+
+                await botClient.SendTextMessageAsync(chatId, "Выберите пункт меню:",
+            replyMarkup: ForTelegramBot.keyboardMarkup(message.Text),
+            cancellationToken: cancellationToken);
+                stack.Push(message.Text.ToLower());
+            }
+            else if (stack.Peek() == "назад" || stack.Peek() == "/start")
+            {
+                /////////////////////////// 1 уровень логики
+                if (message.Text.ToLower() == "топ 5 ноутбуков")
+                {
+                    await botClient.SendTextMessageAsync(chatId, "Выберете по какому параметру вывести топ ноутбуков",
+           replyMarkup: ForTelegramBot.keyboardMarkup(message.Text),
+           cancellationToken: cancellationToken);
+                    stack.Push(message.Text.ToLower());
+                }
+                else if (message.Text.ToLower() == "инфо")
+                {
+                    await botClient.SendTextMessageAsync(chatId, "Привет. Я удобный бот для подбора ноутбуков по твоим потребностям.\nЯ могу подобрать тебе ноутбук именно по твоему вкусу ",
+           replyMarkup: ForTelegramBot.keyboardMarkup(message.Text),
+           cancellationToken: cancellationToken);
+                    stack.Push(message.Text.ToLower());
+                }
+                else if (message.Text.ToLower() == "поиск ноутбука по характеристикам")
+                {
+
+                    await botClient.SendTextMessageAsync(chatId, "Выберите пункт для поиска ноутбука:",
+           replyMarkup: ForTelegramBot.keyboardMarkup(message.Text),
+           cancellationToken: cancellationToken);
+                    stack.Push(message.Text.ToLower());
+                }
+                else if (message.Text == "ЛУЧШИЙ НОУТБУК ДЛЯ ПРОГРАММИРОВАНИЯ!!!!")
+                {
+                    /* await botClient.SendTextMessageAsync(
+    chatId: chatId,
+    text: "ИМЕННО ПО ЭТОЙ ССЫЛКЕ НАХОДИТСЯ ЛУЧШИЙ НОУТБУК КОТОРЫЙ МОЖЕТ БЫТЬ",
+    parseMode: ParseMode.MarkdownV2,
+    disableNotification: true,
+    
+    replyMarkup: new InlineKeyboardMarkup(
+        InlineKeyboardButton.WithUrl(
+            text: "Тык сюда",
+            url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ")),
+    cancellationToken: cancellationToken);*/
+                    Console.WriteLine(1);
+                    /*await using var stream = System.IO.File.OpenRead("./input-files/best_laptop.mp4");
+
+                    await botClient.SendVideoNoteAsync(
+                        chatId: chatId,
+                        videoNote: stream,
+                        duration: 47,
+                        length: 360, // value of width/height
+                        cancellationToken: cancellationToken);*/
+
+                    await botClient.SendPhotoAsync(
+    chatId: chatId,
+    photo: "https://shifter.pt/wp-content/uploads/2018/03/rickrolled.png",
+    caption: "Ладно, ладано, по ссылке уж точно будет лучший ноутбук для программирования",
+    parseMode: ParseMode.Html,
+    replyMarkup: new InlineKeyboardMarkup(
+        InlineKeyboardButton.WithUrl(
+            text: "Тык сюда",
+            url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ")),
+    cancellationToken: cancellationToken);
+                }
+                
+            }
+            
+
+
+            /////////////////////////// 2 уровень логики
+            if ((message.Text == "Названию" || message.Text == "Категории" || message.Text.ToLower() == "диагонали" || message.Text.ToLower() == "оперативной памяти" || message.Text.ToLower() == "цене" || message.Text.ToLower() == "весу") && stack.Contains("топ 5 ноутбуков"))
+            {
+
+                //stack.Push("топ 5 ноутбуков");
+                foreach (var item in LaptopList.Top5SortList(laptopList, message.Text))
+                {
+                    await botClient.SendTextMessageAsync(chatId, item.ToString(),
+       replyMarkup: ForTelegramBot.keyboardMarkup("Топ 5 ноутбуков"),
+       cancellationToken: cancellationToken);
+                    
+
+                }
+                stack.Push(message.Text.ToLower());
+            }
+            else if ( stack.Contains("поиск ноутбука по характеристикам") && (message.Text == "По бренду" || message.Text == "По категории" || message.Text == "По размеру экрана" || message.Text == "По размеру оперативной памяти"  || message.Text == "По весу" || message.Text == "По цене"))
+            {
+                var filteredLaptopList = LaptopList.HashSetWithCategories(laptopList, message.Text);
+
+
+
+                if (message.Text == "По бренду" || message.Text == "По категории" )
+               {
+
+                    foreach (var item in filteredLaptopList)
+                    {
+                        await botClient.SendTextMessageAsync(chatId, item,
+                             replyMarkup: ForTelegramBot.keyboardMarkup("поиск ноутбука по характеристикам"),
+                             cancellationToken: cancellationToken);
+
+                    }
+                    await botClient.SendTextMessageAsync(chatId, "Выберите что нибудь из предложенных вариантов выше:",
+                        replyMarkup: ForTelegramBot.keyboardMarkup("поиск ноутбука по характеристикам"),
+                        cancellationToken: cancellationToken);
+                    stack.Push(message.Text.ToLower());
+                }
+                else
+                {
+                    var min = filteredLaptopList.Select(x => double.Parse(x)).Min();
+                    var max = filteredLaptopList.Select(x => double.Parse(x)).Max();
+                    await botClient.SendTextMessageAsync(chatId, $"Минимальное значение: {min}",
+                        replyMarkup: ForTelegramBot.keyboardMarkup("поиск ноутбука по характеристикам"),
+
+                        cancellationToken: cancellationToken);
+                    
+                    await botClient.SendTextMessageAsync(chatId, $"Максимальное значение: {max}",
+                        replyMarkup: ForTelegramBot.keyboardMarkup("поиск ноутбука по характеристикам"),
+                        cancellationToken: cancellationToken);
+                    
+                    await botClient.SendTextMessageAsync(chatId, $"Выберите диопазон от {min} до {max}\nОтвет должен быть таким:<минимальное значение>-<максимальное значение>. Например: 1,4-2,6",
+                        replyMarkup: ForTelegramBot.keyboardMarkup("поиск ноутбука по характеристикам"),
+                        cancellationToken: cancellationToken);
+                    stack.Push(message.Text.ToLower());
+                }
+
+                
+
+                
+            }
+
+            /////////////////////////// 3 уровень логики
+
+         
+            if (stack.Contains("поиск ноутбука по характеристикам") && (stack.Peek() == "по бренду" || stack.Peek() == "по категории" || stack.Peek() == "по размеру экрана" || stack.Peek() == "по размеру оперативной памяти" || stack.Peek() == "по весу" || stack.Peek() == "по цене"))
+            {
+               
+                if (stack.Peek() == "по бренду" || stack.Peek() == "по категории")
+                {
+                   
+                        
+                        if (!laptopList.Exists(x => x.brand == message.Text || x.category == message.Text)) return;
+
+                    List<Laptop> filteredLaptopList = laptopList.Where(x => x.brand == message.Text || x.category == message.Text).Take(10).ToList();
+                        foreach (var item in filteredLaptopList)
+                    {
+                        await botClient.SendTextMessageAsync(chatId, item.ToString(),
+                             replyMarkup: ForTelegramBot.keyboardMarkup("поиск ноутбука по характеристикам"),
+                             cancellationToken: cancellationToken);
+
+                    }
+                    
+                   
+                }
+                else
+                {
+                    
+                    if (!(message.Text == "По бренду" || message.Text == "По категории" || message.Text == "По размеру экрана" || message.Text == "По размеру оперативной памяти" || message.Text == "По весу" || message.Text == "По цене"))
+                    {
+                        
+                        List<Laptop> list = LaptopList.ListForSort(laptopList, stack.Peek(), message.Text);
+                        if (list.Count > 0) {
+                            foreach (var item in list)
+                            {
+                                await botClient.SendTextMessageAsync(chatId, item.ToString(),
+                                replyMarkup: ForTelegramBot.keyboardMarkup("поиск ноутбука по характеристикам"),
+
+                                cancellationToken: cancellationToken);
+                            }
+                        }
+                        else
+                        {
+                            await botClient.SendTextMessageAsync(chatId, "К сожалению по выбранным вами параметрам не удалось ничего найти(",
+                               replyMarkup: ForTelegramBot.keyboardMarkup("поиск ноутбука по характеристикам"),
+
+                               cancellationToken: cancellationToken);
+                        }
+                        
+                        
+
+                        
+                        stack.Push(message.Text.ToLower());
+                    }
+                    
+                    
+                    
+
+
+                }
+            }
+
+
+
+
+        }
+
+
     }
 
-    /// <summary>
-    /// Обработчик исключений, возникших при работе бота
-    /// </summary>
-    /// <param name="botClient">Клиент, для которого возникло исключение</param>
-    /// <param name="exception">Возникшее исключение</param>
-    /// <param name="cancellationToken">Служебный токен для работы с многопоточностью</param>
-    /// <returns></returns>
+
+
+
     Task OnErrorOccured(ITelegramBotClient botClient, Exception exception, CancellationToken cancellationToken)
     {
         // В зависимости от типа исключения печатаем различные сообщения об ошибке
@@ -106,12 +301,12 @@ public class TelegramBot
         {
             ApiRequestException apiRequestException
                 => $"Telegram API Error:\n[{apiRequestException.ErrorCode}]\n{apiRequestException.Message}",
-            
+
             _ => exception.ToString()
         };
 
         Console.WriteLine(errorMessage);
-        
+
         // Завершаем работу
         return Task.CompletedTask;
     }
